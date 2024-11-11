@@ -1,0 +1,4 @@
+{
+    "mongoURI": "mongodb+srv://dedjam:12345678Ab!@itdev161.9x1pu.mongodb.net/?retryWrites=true&w=majority&appName=itdev161",
+    "jwtSecret": "jwttestsecret"
+  }
