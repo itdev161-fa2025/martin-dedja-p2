@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import "./Login.css";
 
@@ -11,15 +10,33 @@ function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    const userData = {
+      email,
+      password,
+    };
+
     try {
-      const res = await axios.post("http://localhost:5000/api/login", {
-        email,
-        password,
+      const response = await fetch("http://localhost:5000/api/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(userData),
       });
-      localStorage.setItem("token", res.data.token);
-      navigate("/home");
+
+      const data = await response.json();
+
+      if (response.ok) {
+        localStorage.setItem("p2-token", data.token);
+        localStorage.setItem("user", JSON.stringify(data.user));
+
+        navigate("/home");
+      } else {
+        setError(data.errors[0].msg);
+      }
     } catch (err) {
-      setError("Invalid credentials");
+      setError("Something went wrong. Please try again.");
     }
   };
 

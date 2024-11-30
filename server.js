@@ -6,6 +6,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import config from "config";
 import User from "./models/User.js";
+import Task from "./models/Task.js";
 import auth from "./middleware/auth.js";
 
 const app = express();
@@ -16,6 +17,7 @@ app.use(express.json({ extended: false }));
 app.use(
   cors({
     origin: "http://localhost:3000",
+    origin: "http://localhost:3001",
   })
 );
 
@@ -107,6 +109,7 @@ const returnToken = (user, res) => {
   const payload = {
     user: {
       id: user.id,
+      name: user.name,
     },
   };
 
@@ -116,10 +119,78 @@ const returnToken = (user, res) => {
     { expiresIn: "10hr" },
     (err, token) => {
       if (err) throw err;
-      res.json({ token });
+      res.json({ token, user: payload.user });
     }
   );
 };
+
+app.post("/api/tasks", auth, async (req, res) => {
+  try {
+    const { task, status } = req.body;
+
+    const newTask = new Task({
+      task,
+      status,
+      user: req.user.id,
+    });
+
+    await newTask.save();
+    res.json(newTask);
+  } catch (error) {
+    console.error(error.message);
+    res.status(500).send("Server error");
+  }
+});
+
+app.get("/api/tasks", auth, async (req, res) => {
+  try {
+    const tasks = await Task.find({ user: req.user.id });
+    res.json(tasks);
+  } catch (error) {
+    console.error(error.message);
+    res.status(500).send("Server error");
+  }
+});
+
+app.put("/api/tasks/:id", auth, async (req, res) => {
+  try {
+    const { task, status } = req.body;
+    const updatedTask = await Task.findByIdAndUpdate(
+      req.params.id,
+      { task, status },
+      { new: true }
+    );
+    if (!updatedTask) {
+      return res.status(404).json({ msg: "Task not found" });
+    }
+    res.json(updatedTask);
+  } catch (error) {
+    console.error(error.message);
+    res.status(500).send("Server error");
+  }
+});
+
+app.delete("/api/tasks/:id", auth, async (req, res) => {
+  try {
+    const task = await Task.findById(req.params.id);
+
+    if (!task) {
+      return res.status(404).json({ msg: "Task not found" });
+    }
+
+    if (task.user.toString() !== req.user.id) {
+      return res.status(401).json({ msg: "Not authorized" });
+    }
+
+    await Task.findByIdAndDelete(req.params.id);
+    
+    res.json({ msg: "Task removed" });
+  } catch (error) {
+    console.error(error.message);
+    res.status(500).send("Server error");
+  }
+});
+
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
